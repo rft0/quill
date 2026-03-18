@@ -5,38 +5,37 @@ import (
 	"os"
 	"time"
 
-	"github.com/rft0/quill"
+	ll "github.com/rft0/quill"
 )
 
 // Timer is a child component — just a function that takes ctx and returns a node.
-func Timer(ctx *quill.Context) *quill.Node {
-	elapsed := quill.UseState(ctx, 0)
+func Timer(ctx *ll.Context) *ll.Node {
+	elapsed := ll.UseState(ctx, 0)
 
-	quill.UseInterval(ctx, time.Second, func() {
+	ll.UseInterval(ctx, time.Second, func() {
 		elapsed.Set(elapsed.Get() + 1)
 	})
 
 	m := elapsed.Get() / 60
 	s := elapsed.Get() % 60
 
-	return quill.Box(quill.FlexRow, quill.Gap(1),
-		quill.Text("Elapsed:", quill.Bold),
-		quill.Text(fmt.Sprintf("%02d:%02d", m, s), quill.TextColor(quill.Cyan), quill.Bold),
+	return ll.Box(ll.FlexRow, ll.Gap(1),
+		ll.Text("Elapsed:", ll.Bold),
+		ll.Text(fmt.Sprintf("%02d:%02d", m, s), ll.TextColor(ll.Cyan), ll.Bold),
 	)
 }
 
 // TodoItem is a child component that renders a single todo.
-func TodoItem(ctx *quill.Context, text string, done bool) *quill.Node {
-	check := "[ ]"
-	color := quill.White
-	if done {
-		check = "[x]"
-		color = quill.Green
-	}
+func TodoItem(ctx *ll.Context, text string, done, selected bool) *ll.Node {
+	color := ll.Pick(done, ll.TextColor(ll.Green), ll.TextColor(ll.White))
 
-	return quill.Box(quill.FlexRow, quill.Gap(1),
-		quill.Text(check, quill.TextColor(color), quill.Bold),
-		quill.Text(text, quill.TextColor(color)),
+	return ll.Box(ll.FlexRow, ll.Gap(1),
+		ll.Pick(selected, ll.Bold, ll.Dim),
+		ll.IfElse(done,
+			ll.Text("[x]", color),
+			ll.Text("[ ]", color),
+		),
+		ll.Text(text, color),
 	)
 }
 
@@ -46,60 +45,47 @@ type todo struct {
 }
 
 // App is the root component that composes Timer and TodoItem.
-func App(ctx *quill.Context) *quill.Node {
-	todos := quill.UseState(ctx, []todo{
+func App(ctx *ll.Context) *ll.Node {
+	todos := ll.UseState(ctx, []todo{
 		{text: "Build a TUI framework"},
 		{text: "Add hooks system"},
 		{text: "Write nested component example"},
 	})
-	cursor := quill.UseState(ctx, 0)
+	cursor := ll.UseState(ctx, 0)
 
-	quill.OnKey(ctx, func(key quill.KeyMsg) {
+	ll.OnKey(ctx, func(key ll.KeyMsg) {
 		switch key.Type {
-		case quill.KeyCtrlC, quill.KeyEscape:
+		case ll.KeyCtrlC, ll.KeyEscape:
 			ctx.Quit()
-		case quill.KeyUp:
+		case ll.KeyUp:
 			if cursor.Get() > 0 {
 				cursor.Set(cursor.Get() - 1)
 			}
-		case quill.KeyDown:
+		case ll.KeyDown:
 			if cursor.Get() < len(todos.Get())-1 {
 				cursor.Set(cursor.Get() + 1)
 			}
-		case quill.KeySpace, quill.KeyEnter:
+		case ll.KeyEnter:
 			items := todos.Get()
 			items[cursor.Get()].done = !items[cursor.Get()].done
 			todos.Set(items)
 		}
 	})
 
-	// Build todo list items using the child component.
 	items := todos.Get()
-	todoNodes := make([]any, len(items))
-	for i, item := range items {
-		node := TodoItem(ctx, item.text, item.done)
-		if i == cursor.Get() {
-			node.Paint.Reverse = true
-		}
-		todoNodes[i] = node
-	}
 
-	// Compose: timer on top, todo list below, help text at bottom.
-	children := []any{
-		quill.FlexColumn, quill.BorderRounded, quill.PadXY(2, 1), quill.Gap(1),
-		quill.Text("Todo List", quill.Bold, quill.TextColor(quill.Yellow)),
+	return ll.Box(ll.FlexColumn, ll.BorderRounded, ll.PadXY(2, 1), ll.Gap(1),
+		ll.Text("Todo List", ll.Bold, ll.TextColor(ll.Yellow)),
 		Timer(ctx),
-	}
-	children = append(children, todoNodes...)
-	children = append(children,
-		quill.Text("↑/↓ move · space toggle · esc quit", quill.MarginTop(1), quill.TextColor(quill.Gray)),
+		ll.Map(items, func(item todo, i int) *ll.Node {
+			return TodoItem(ctx, item.text, item.done, i == cursor.Get())
+		}),
+		ll.Text("↑/↓ to move · ENTER to toggle · ESC to quit", ll.MarginTop(1), ll.TextColor(ll.Gray)),
 	)
-
-	return quill.Box(children...)
 }
 
 func main() {
-	if err := quill.New(App).Run(); err != nil {
+	if err := ll.New(App).Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}

@@ -551,9 +551,17 @@ func layoutWrap(node *Node, infos []childInfo, isRow bool, mainSize, crossSize f
 func ComputeInline(node *Node, availWidth float64) float64 {
 	node.Layout.X = node.Style.Margin.Left
 	node.Layout.Y = node.Style.Margin.Top
-	node.Layout.Width = availWidth - node.Style.Margin.Horizontal()
 	if node.Style.Width.Unit != Auto {
 		node.Layout.Width = resolveSize(node.Style.Width, availWidth, availWidth) - node.Style.Margin.Horizontal()
+	} else {
+		// Use natural content width so inline elements don't stretch
+		// to the full terminal width.
+		nw := naturalWidth(node)
+		maxW := availWidth - node.Style.Margin.Horizontal()
+		if nw > maxW {
+			nw = maxW
+		}
+		node.Layout.Width = nw
 	}
 
 	// Measure natural content height.

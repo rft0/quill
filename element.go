@@ -374,6 +374,12 @@ func Box(args ...any) *Node {
 			if v != nil {
 				n.AddChild(v)
 			}
+		case []*Node:
+			for _, child := range v {
+				if child != nil {
+					n.AddChild(child)
+				}
+			}
 		case prop:
 			v.apply(n)
 		}
@@ -422,6 +428,24 @@ func IfElse(cond bool, a, b *Node) *Node {
 	return b
 }
 
+// Map converts a slice into a list of nodes using the given function.
+// The result can be spread directly into [Box] args.
+//
+//	Box(FlexColumn,
+//	    Text("Header"),
+//	    Map(items, func(item string, i int) *Node {
+//	        return Text(item)
+//	    }),
+//	    Text("Footer"),
+//	)
+func Map[T any](items []T, fn func(item T, index int) *Node) []*Node {
+	nodes := make([]*Node, len(items))
+	for i, item := range items {
+		nodes[i] = fn(item, i)
+	}
+	return nodes
+}
+
 // --- Debug prop ---
 
 type debugProp struct{}
@@ -454,4 +478,19 @@ func FocusColor(focused bool, active, inactive Color) Color {
 //	)
 func FocusBorderColor(focused bool, active, inactive Color) borderColorProp {
 	return borderColorProp{FocusColor(focused, active, inactive)}
+}
+
+type pickProp struct{ chosen prop }
+
+func (p pickProp) apply(n *Node) { p.chosen.apply(n) }
+
+// Pick returns a or b based on the condition. Works with any prop.
+//
+//	Pick(input.Focused, TextColor(Cyan), TextColor(Gray))
+//	Pick(checked, Bold, Dim)
+func Pick(cond bool, a, b prop) prop {
+	if cond {
+		return pickProp{a}
+	}
+	return pickProp{b}
 }

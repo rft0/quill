@@ -99,6 +99,7 @@ func (a *App) Run() error {
 
 	var prevCanvas *Canvas
 	prevLines := 0
+	prevWidth := 0
 
 	msgs := make(chan Msg, 64)
 	batch := &renderBatch{}
@@ -140,9 +141,10 @@ func (a *App) Run() error {
 				if a.fullscreen {
 					a.flushFullscreen(out, canvas, prevCanvas)
 				} else {
-					a.flushInline(out, canvas, prevCanvas, prevLines)
+					a.flushInline(out, canvas, prevCanvas, prevLines, prevWidth)
 				}
 				prevLines = canvas.Height
+				prevWidth = canvas.Width
 				prevCanvas = canvas
 				cmd = nil
 			}
@@ -158,8 +160,8 @@ func (a *App) Run() error {
 			w = r.Width
 			if a.fullscreen {
 				h = r.Height
-				prevCanvas = nil // force full redraw on resize
 			}
+			prevCanvas = nil // force full redraw on resize
 		}
 
 		batch.mu.Lock()
@@ -205,9 +207,10 @@ func (a *App) Run() error {
 		if a.fullscreen {
 			a.flushFullscreen(out, canvas, prevCanvas)
 		} else {
-			a.flushInline(out, canvas, prevCanvas, prevLines)
+			a.flushInline(out, canvas, prevCanvas, prevLines, prevWidth)
 		}
 		prevLines = canvas.Height
+		prevWidth = canvas.Width
 		prevCanvas = canvas
 		return cmd
 	}
@@ -316,7 +319,7 @@ func (a *App) flushFullscreen(out io.Writer, curr, prev *Canvas) {
 
 // flushInline renders a frame to the terminal in inline mode.
 // Uses relative cursor movement and cell-level diffing against prev.
-func (a *App) flushInline(out io.Writer, curr, prev *Canvas, prevLines int) {
+func (a *App) flushInline(out io.Writer, curr, prev *Canvas, prevLines, prevWidth int) {
 	contentH := curr.Height
 	w := curr.Width
 
@@ -404,20 +407,20 @@ func (a *App) flushInline(out io.Writer, curr, prev *Canvas, prevLines int) {
 
 	// Full redraw: first frame or height changed.
 	if prevLines > 0 {
-		if prevLines > 1 {
-			fmt.Fprintf(&buf, "\x1b[%dF", prevLines-1)
-		}
-		buf.WriteString("\r")
-		for i := 0; i < prevLines; i++ {
-			buf.WriteString("\x1b[2K")
-			if i < prevLines-1 {
-				buf.WriteString("\n")
+		// When the terminal shrinks, old lines (rendered at prevWidth) get
+		// wrapped by the terminal into ceil(prevWidth/newWidth) terminal lines
+		// each. We must move up enough to reach the true start of the old frame.
+		wrappedTotal := prevLines
+		if prevWidth > 0 && w > 0 && prevWidth > w {
+			wrappedTotal = 0
+			for i := 0; i < prevLines; i++ {
+				wrappedTotal += (prevWidth + w - 1) / w
 			}
 		}
-		if prevLines > 1 {
-			fmt.Fprintf(&buf, "\x1b[%dF", prevLines-1)
+		if wrappedTotal > 1 {
+			fmt.Fprintf(&buf, "\x1b[%dF", wrappedTotal-1)
 		}
-		buf.WriteString("\r")
+		buf.WriteString("\r\x1b[J") // erase from cursor to end of screen
 	}
 
 	buf.WriteString("\x1b[?25l")

@@ -5,19 +5,19 @@ import (
 	"os"
 	"time"
 
-	"github.com/rft0/quill"
+	ll "github.com/rft0/quill"
 )
 
-func Widgets(ctx *quill.Context) *quill.Node {
+func Widgets(ctx *ll.Context) *ll.Node {
 	// Spinner state
-	frame := quill.UseState(ctx, 0)
-	quill.UseInterval(ctx, 80*time.Millisecond, func() {
-		frame.Set((frame.Get() + 1) % len(quill.SpinnerDots))
+	frame := ll.UseState(ctx, 0)
+	ll.UseInterval(ctx, 80*time.Millisecond, func() {
+		frame.Set((frame.Get() + 1) % len(ll.SpinnerDots))
 	})
 
 	// Progress bar state
-	progress := quill.UseState(ctx, 0.0)
-	quill.UseInterval(ctx, 200*time.Millisecond, func() {
+	progress := ll.UseState(ctx, 0.0)
+	ll.UseInterval(ctx, 200*time.Millisecond, func() {
 		v := progress.Get() + 0.01
 		if v > 1 {
 			v = 0
@@ -26,60 +26,79 @@ func Widgets(ctx *quill.Context) *quill.Node {
 	})
 
 	// Checkbox state
-	check1 := quill.UseRef(ctx, quill.CheckboxState{Checked: true})
-	check2 := quill.UseRef(ctx, quill.CheckboxState{})
+	check1 := ll.UseRef(ctx, ll.CheckboxState{Checked: true})
+	check2 := ll.UseRef(ctx, ll.CheckboxState{})
 
 	// Select state
-	sel := quill.UseRef(ctx, quill.SelectState{
+	sel := ll.UseRef(ctx, ll.SelectState{
 		Options: []string{"Option A", "Option B", "Option C", "Option D"},
-		Focused: true,
 	})
 
-	quill.OnKey(ctx, func(key quill.KeyMsg) {
+	// Focus group: Tab/Shift+Tab cycles between checkboxes and select
+	focus := ll.UseRef(ctx, ll.FocusGroup{})
+	ll.UseEffect(ctx, func() {
+		*focus = ll.NewFocusGroup(check1, check2, sel)
+	})
+
+	ll.OnKey(ctx, func(key ll.KeyMsg) {
 		switch key.Type {
-		case quill.KeyCtrlC, quill.KeyEscape:
+		case ll.KeyCtrlC, ll.KeyEscape:
 			ctx.Quit()
-		case quill.KeySpace:
-			check1.Toggle()
+		case ll.KeyTab:
+			focus.Next()
+		case ll.KeyShiftTab:
+			focus.Prev()
+		case ll.KeyDown:
+			if sel.Focused && sel.Selected < len(sel.Options)-1 {
+				sel.Selected++
+			} else {
+				focus.Next()
+			}
+		case ll.KeyUp:
+			if sel.Focused && sel.Selected > 0 {
+				sel.Selected--
+			} else {
+				focus.Prev()
+			}
 		default:
-			sel.Update(key)
+			focus.Update(key)
 		}
 	})
 
-	return quill.Box(quill.FlexColumn, quill.Gap(1),
-		quill.Text("Widget Showcase", quill.Bold, quill.TextColor(quill.Yellow)),
+	return ll.Box(ll.FlexColumn, ll.Gap(1),
+		ll.Text("Widget Showcase", ll.Bold, ll.TextColor(ll.Yellow)),
 
 		// Spinner
-		quill.Box(quill.FlexRow, quill.Gap(1),
-			quill.Spinner(frame.Get(), quill.SpinnerDots, quill.TextColor(quill.Cyan)),
-			quill.Text("Loading...", quill.TextColor(quill.Gray)),
+		ll.Box(ll.FlexRow, ll.Gap(1),
+			ll.Spinner(frame.Get(), ll.SpinnerDots, ll.TextColor(ll.Cyan)),
+			ll.Text("Loading...", ll.TextColor(ll.Gray)),
 		),
 
 		// Progress bar
-		quill.Box(quill.FlexColumn,
-			quill.Text(fmt.Sprintf("Progress: %.0f%%", progress.Get()*100), quill.TextColor(quill.White)),
-			quill.ProgressBar(progress.Get(), quill.TextColor(quill.White)),
+		ll.Box(ll.FlexColumn,
+			ll.Text(fmt.Sprintf("Progress: %.0f%%", progress.Get()*100), ll.TextColor(ll.White)),
+			ll.ProgressBar(progress.Get(), ll.TextColor(ll.White)),
 		),
 
 		// Checkboxes
-		quill.Box(quill.FlexColumn,
-			quill.Text("Checkboxes:", quill.Bold),
-			quill.Checkbox(check1, "Enable feature", quill.TextColor(quill.Green)),
-			quill.Checkbox(check2, "Dark mode", quill.TextColor(quill.Blue)),
+		ll.Box(ll.FlexColumn,
+			ll.Text("Checkboxes:", ll.Bold),
+			ll.Checkbox(check1, "Enable feature", ll.TextColor(ll.Green)),
+			ll.Checkbox(check2, "Dark mode", ll.TextColor(ll.Blue)),
 		),
 
 		// Select
-		quill.Box(quill.FlexColumn,
-			quill.Text("Select (j/k to navigate):", quill.Bold),
-			quill.Select(sel, quill.TextColor(quill.Cyan)),
+		ll.Box(ll.FlexColumn,
+			ll.Text("Select:", ll.Bold),
+			ll.Select(sel, ll.TextColor(ll.Cyan)),
 		),
 
-		quill.Text("space: toggle checkbox · j/k: select · esc: quit", quill.TextColor(quill.Gray)),
+		ll.Text("↑/↓ to navigate · ESC to quit", ll.TextColor(ll.Gray)),
 	)
 }
 
 func main() {
-	if err := quill.New(Widgets).Run(); err != nil {
+	if err := ll.New(Widgets).Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}

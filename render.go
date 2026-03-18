@@ -19,7 +19,7 @@ type Paint struct {
 // Render walks the layout tree rooted at node and paints each node onto
 // canvas. Compute or ComputeInline must be called first.
 func Render(root *Node, canvas *Canvas) {
-	renderNode(root, canvas, nil, ColorDefault, false, 0)
+	renderNode(root, canvas, nil, ColorDefault, CellAttrs{}, false, 0)
 }
 
 type clipRect struct {
@@ -36,7 +36,7 @@ var debugColors = [...]Color{
 	ANSIColor(6), // cyan
 }
 
-func renderNode(node *Node, canvas *Canvas, clip *clipRect, inheritFG Color, debug bool, depth int) {
+func renderNode(node *Node, canvas *Canvas, clip *clipRect, inheritFG Color, inheritAttrs CellAttrs, debug bool, depth int) {
 	x := int(node.Layout.X)
 	y := int(node.Layout.Y)
 	w := int(node.Layout.Width)
@@ -47,6 +47,17 @@ func renderNode(node *Node, canvas *Canvas, clip *clipRect, inheritFG Color, deb
 	effectiveFG := node.Paint.FG
 	if effectiveFG.IsDefault() {
 		effectiveFG = inheritFG
+	}
+
+	// Merge inherited text attributes with this node's own.
+	// Reverse and BG do not inherit (same as CSS/Ink).
+	effectiveAttrs := CellAttrs{
+		Bold:          node.Paint.Bold || inheritAttrs.Bold,
+		Italic:        node.Paint.Italic || inheritAttrs.Italic,
+		Underline:     node.Paint.Underline || inheritAttrs.Underline,
+		Dim:           node.Paint.Dim || inheritAttrs.Dim,
+		Strikethrough: node.Paint.Strikethrough || inheritAttrs.Strikethrough,
+		Reverse:       node.Paint.Reverse,
 	}
 
 	// Fill background across the node's entire box.
@@ -101,14 +112,7 @@ func renderNode(node *Node, canvas *Canvas, clip *clipRect, inheritFG Color, deb
 			}
 		}
 
-		attrs := CellAttrs{
-			Bold:          node.Paint.Bold,
-			Italic:        node.Paint.Italic,
-			Underline:     node.Paint.Underline,
-			Dim:           node.Paint.Dim,
-			Strikethrough: node.Paint.Strikethrough,
-			Reverse:       node.Paint.Reverse,
-		}
+		attrs := effectiveAttrs
 
 		col, row, runeIdx := 0, 0, 0
 		for _, r := range text {
@@ -203,7 +207,7 @@ func renderNode(node *Node, canvas *Canvas, clip *clipRect, inheritFG Color, deb
 		if scrollOffset != 0 {
 			child.Layout.Y -= float64(scrollOffset)
 		}
-		renderNode(child, canvas, childClip, effectiveFG, debug, depth+1)
+		renderNode(child, canvas, childClip, effectiveFG, effectiveAttrs, debug, depth+1)
 		if scrollOffset != 0 {
 			child.Layout.Y += float64(scrollOffset)
 		}

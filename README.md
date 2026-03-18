@@ -12,37 +12,29 @@ go get github.com/rft0/quill
 package main
 
 import (
-    "fmt"
-    "os"
+	"fmt"
+	"os"
 
-    ll "github.com/rft0/quill"
+	ll "github.com/rft0/quill"
 )
 
-func Counter(ctx *ll.Context) *ll.Node {
-    count := ll.UseState(ctx, 0)
+func App(ctx *ll.Context) *ll.Node {
+	ll.OnKey(ctx, func(key ll.KeyMsg) {
+		if key.Type == ll.KeyEscape || key.Type == ll.KeyCtrlC {
+			ctx.Quit()
+		}
+	})
 
-    ll.OnKey(ctx, func(key ll.KeyMsg) {
-        switch key.Type {
-        case ll.KeyUp:
-            count.Set(count.Get() + 1)
-        case ll.KeyDown:
-            count.Set(count.Get() - 1)
-        case ll.KeyEscape:
-            ctx.Quit()
-        }
-    })
-
-    return ll.Box(ll.FlexRow,
-        ll.Text("Count: ", ll.Bold),
-        ll.Text(fmt.Sprintf("%d", count.Get()), ll.TextColor(ll.Cyan)),
-    )
+	return ll.Box(ll.BorderRounded,
+		ll.Text("Hello, World!", ll.TextColor(ll.White), ll.Bold),
+	)
 }
 
 func main() {
-    if err := ll.New(Counter).Run(); err != nil {
-        fmt.Fprintf(os.Stderr, "error: %v\n", err)
-        os.Exit(1)
-    }
+	if err := ll.New(App).Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
 }
 ```
 

@@ -4,59 +4,52 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/rft0/quill"
+	ll "github.com/rft0/quill"
 )
 
-func ScrollDemo(ctx *quill.Context) *quill.Node {
-	scroll := quill.UseRef(ctx, quill.ScrollState{})
+func ScrollDemo(ctx *ll.Context) *ll.Node {
+	scroll := ll.UseRef(ctx, ll.ScrollState{})
 
-	quill.OnKey(ctx, func(key quill.KeyMsg) {
+	ll.OnKey(ctx, func(key ll.KeyMsg) {
 		switch key.Type {
-		case quill.KeyCtrlC, quill.KeyEscape:
+		case ll.KeyCtrlC, ll.KeyEscape:
 			ctx.Quit()
-		case quill.KeyUp:
+		case ll.KeyUp:
 			scroll.ScrollUp(1)
-		case quill.KeyDown:
+		case ll.KeyDown:
 			scroll.ScrollDown(1)
-		case quill.KeyPageUp:
+		case ll.KeyPageUp:
 			scroll.PageUp()
-		case quill.KeyPageDown:
+		case ll.KeyPageDown:
 			scroll.PageDown()
-		case quill.KeyRune:
-			switch key.Rune {
-			case 'k':
-				scroll.ScrollUp(1)
-			case 'j':
-				scroll.ScrollDown(1)
-			}
 		}
 	})
 
 	// Build scrollable content.
 	args := []any{
-		quill.FlexColumn,
-		quill.Height(quill.Px(10)),
-		quill.BorderRounded,
-		quill.BorderColor(quill.Cyan),
+		ll.FlexColumn,
+		ll.Height(ll.Px(10)),
+		ll.BorderRounded,
+		ll.BorderColor(ll.Cyan),
 	}
 	for i := 1; i <= 30; i++ {
-		color := quill.White
+		color := ll.White
 		if i%2 == 0 {
-			color = quill.Gray
+			color = ll.Gray
 		}
-		args = append(args, quill.Text(fmt.Sprintf("  Line %2d: some content here", i), quill.TextColor(color)))
+		args = append(args, ll.Text(fmt.Sprintf("  Line %2d: some content here", i), ll.TextColor(color)))
 	}
 
-	return quill.Box(quill.FlexColumn, quill.Gap(1),
-		quill.Text("Scroll Demo", quill.Bold, quill.TextColor(quill.Yellow)),
-		quill.Text(fmt.Sprintf("Offset: %d", scroll.Offset), quill.TextColor(quill.Gray)),
-		quill.ScrollView(scroll, args...),
-		quill.Text("j/k or ↑/↓: scroll · pgup/pgdn: page · esc: quit", quill.TextColor(quill.Gray)),
+	return ll.Box(ll.FlexColumn, ll.Gap(1),
+		ll.Text("Scroll Demo", ll.Bold, ll.TextColor(ll.Yellow)),
+		ll.Text(fmt.Sprintf("Offset: %d", scroll.Offset), ll.TextColor(ll.Gray)),
+		ll.ScrollView(scroll, args...),
+		ll.Text("↑/↓ to scroll · pgup/pgdn to change page · ESC to quit", ll.TextColor(ll.Gray)),
 	)
 }
 
 func main() {
-	if err := quill.New(ScrollDemo).Run(); err != nil {
+	if err := ll.New(ScrollDemo).Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}

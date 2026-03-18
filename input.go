@@ -118,44 +118,51 @@ func Input(state *InputState, args ...any) *Node {
 	return n
 }
 
-// FocusGroup manages focus across multiple InputStates.
-// It handles Tab/Shift-Tab cycling and routes key events to the focused input.
+// Focusable is implemented by any widget state that supports focus management.
+type Focusable interface {
+	Focus()
+	Blur()
+	Update(Msg) Cmd
+}
+
+// FocusGroup manages focus across multiple focusable widgets.
+// It handles Tab/Shift-Tab cycling and routes key events to the focused widget.
 type FocusGroup struct {
-	items []*InputState
+	items []Focusable
 	index int
 }
 
-// NewFocusGroup creates a focus group from the given inputs.
-// The first input is focused automatically.
-func NewFocusGroup(items ...*InputState) FocusGroup {
+// NewFocusGroup creates a focus group from the given focusable widgets.
+// The first item is focused automatically.
+func NewFocusGroup(items ...Focusable) FocusGroup {
 	fg := FocusGroup{items: items}
 	if len(items) > 0 {
-		items[0].Focused = true
+		items[0].Focus()
 	}
 	return fg
 }
 
-// Next moves focus to the next input.
+// Next moves focus to the next item.
 func (fg *FocusGroup) Next() {
 	if len(fg.items) == 0 {
 		return
 	}
-	fg.items[fg.index].Focused = false
+	fg.items[fg.index].Blur()
 	fg.index = (fg.index + 1) % len(fg.items)
-	fg.items[fg.index].Focused = true
+	fg.items[fg.index].Focus()
 }
 
-// Prev moves focus to the previous input.
+// Prev moves focus to the previous item.
 func (fg *FocusGroup) Prev() {
 	if len(fg.items) == 0 {
 		return
 	}
-	fg.items[fg.index].Focused = false
+	fg.items[fg.index].Blur()
 	fg.index = (fg.index - 1 + len(fg.items)) % len(fg.items)
-	fg.items[fg.index].Focused = true
+	fg.items[fg.index].Focus()
 }
 
-// Update forwards the message to the currently focused input.
+// Update forwards the message to the currently focused item.
 func (fg *FocusGroup) Update(msg Msg) Cmd {
 	if len(fg.items) == 0 {
 		return nil
