@@ -9,12 +9,6 @@ import (
 )
 
 func Widgets(ctx *ll.Context) *ll.Node {
-	// Spinner state
-	frame := ll.UseState(ctx, 0)
-	ll.UseInterval(ctx, 80*time.Millisecond, func() {
-		frame.Set((frame.Get() + 1) % len(ll.SpinnerDots))
-	})
-
 	// Progress bar state
 	progress := ll.UseState(ctx, 0.0)
 	ll.UseInterval(ctx, 200*time.Millisecond, func() {
@@ -35,10 +29,7 @@ func Widgets(ctx *ll.Context) *ll.Node {
 	})
 
 	// Focus group: Tab/Shift+Tab cycles between checkboxes and select
-	focus := ll.UseRef(ctx, ll.FocusGroup{})
-	ll.UseEffect(ctx, func() {
-		*focus = ll.NewFocusGroup(check1, check2, sel)
-	})
+	focus := ll.UseFocusGroup(ctx, check1, check2, sel)
 
 	ll.OnKey(ctx, func(key ll.KeyMsg) {
 		switch key.Type {
@@ -70,7 +61,7 @@ func Widgets(ctx *ll.Context) *ll.Node {
 
 		// Spinner
 		ll.Box(ll.FlexRow, ll.Gap(1),
-			ll.Spinner(frame.Get(), ll.SpinnerDots, ll.TextColor(ll.Cyan)),
+			ll.Spinner(ctx, ll.SpinnerDots, ll.TextColor(ll.Cyan)),
 			ll.Text("Loading...", ll.TextColor(ll.Gray)),
 		),
 

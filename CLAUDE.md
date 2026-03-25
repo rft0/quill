@@ -50,10 +50,10 @@ Quill is a Go library (`package quill`) for building terminal UIs with a React-l
    - `Input` — text input with cursor, focus/blur, full editing (uses `UseRef` for `InputState`)
    - `Select` — list picker with j/k/↑/↓ navigation (`SelectState`)
    - `Checkbox` — toggle with label (`CheckboxState`)
-   - `ProgressBar` — 0.0–1.0 value, fills available width (`FlexGrow=1`, sentinel `"__progress__"`)
-   - `Spinner` — frame-based animation (dots/line/block frame sets)
+   - `ProgressBar` — 0.0–1.0 value, fills available width (`FlexGrow=1`)
+   - `Spinner` — self-animating hook (dots/line/block frame sets), takes `ctx`
    - `ScrollView` — clipped scrollable container (`ScrollState` with `ScrollUp`/`Down`/`PageUp`/`PageDown`)
-   - `FocusGroup` — manages Tab/Shift+Tab focus cycling across inputs
+   - `FocusGroup` — manages Tab/Shift+Tab focus cycling across inputs; `UseFocusGroup` hook for easy setup
    - `Modal` — absolutely positioned centered overlay with optional backdrop
    - `List` — virtualized scrollable list for large datasets (`ListState`)
    - `Notify` — absolutely positioned toast notification at top-right
@@ -64,4 +64,5 @@ Quill is a Go library (`package quill`) for building terminal UIs with a React-l
 - `UseState.Set()` sends a `stateMsg` to the message channel to trigger re-render; uses mutex for goroutine safety
 - `UseInterval`/`UseAfter` use `tickMsg` with unique IDs (hook index) to route ticks to the correct hook
 - Internal message types (`stateMsg`, `tickMsg`) are hidden from users — only `OnKey`/`OnMouse`/`OnResize` are exposed
-- ProgressBar uses sentinel text `"__progress__"` detected at render time to generate the bar dynamically based on available width
+- ProgressBar uses a bool flag (`isProgress`) on Node to trigger dynamic bar rendering based on available width
+- `New()` accepts functional options: `WithFullscreen()`, `WithMouse()`, `WithCursor()`

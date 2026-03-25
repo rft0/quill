@@ -69,7 +69,7 @@ func renderNode(node *Node, canvas *Canvas, clip *clipRect, inheritFG Color, inh
 	if node.Style.Border != BorderNone {
 		borderPaint := node.Paint
 		borderPaint.FG = effectiveFG
-		drawBorder(canvas, x, y, w, h, node.Style.Border, borderPaint, clip)
+		drawBorder(canvas, x, y, w, h, node.Style.Border, borderPaint, node.borderTitle, clip)
 	}
 
 	// Debug: propagate from node or parent, draw colored outline.
@@ -78,11 +78,11 @@ func renderNode(node *Node, canvas *Canvas, clip *clipRect, inheritFG Color, inh
 	}
 	if debug && w >= 2 && h >= 2 {
 		dc := debugColors[depth%len(debugColors)]
-		drawBorder(canvas, x, y, w, h, BorderSingle, Paint{FG: dc, BorderFG: dc}, clip)
+		drawBorder(canvas, x, y, w, h, BorderSingle, Paint{FG: dc, BorderFG: dc}, "", clip)
 	}
 
 	// Draw text content for leaf nodes.
-	if node.IsLeaf() && node.Text != "" {
+	if node.IsLeaf() && (node.Text != "" || node.showCursor || node.isProgress) {
 		contentX := x + int(node.Style.Padding.Left) + bw
 		contentY := y + int(node.Style.Padding.Top) + bw
 		contentW := w - int(node.Style.Padding.Horizontal()) - bw*2
@@ -90,9 +90,9 @@ func renderNode(node *Node, canvas *Canvas, clip *clipRect, inheritFG Color, inh
 			contentW = w
 		}
 
-		// Progress bar: generate bar text dynamically.
+		// Progress bar: generate bar text dynamically from available width.
 		text := node.Text
-		if text == "__progress__" {
+		if node.isProgress {
 			text = renderProgressBar(contentW, node.progressValue)
 		}
 
@@ -239,7 +239,7 @@ func fillRectClipped(canvas *Canvas, x, y, w, h int, bg Color, clip *clipRect) {
 	}
 }
 
-func drawBorder(canvas *Canvas, x, y, w, h int, bs BorderStyle, p Paint, clip *clipRect) {
+func drawBorder(canvas *Canvas, x, y, w, h int, bs BorderStyle, p Paint, title string, clip *clipRect) {
 	if w < 2 || h < 2 {
 		return
 	}
@@ -261,9 +261,31 @@ func drawBorder(canvas *Canvas, x, y, w, h int, bs BorderStyle, p Paint, clip *c
 	setClipped(canvas, x, y+h-1, cell(chars.BL), clip)
 	setClipped(canvas, x+w-1, y+h-1, cell(chars.BR), clip)
 
-	// Horizontal edges.
+	// Top edge with optional title.
+	titleRunes := []rune(title)
+	maxTitle := w - 6 // corners + h-char + space on each side
+	if maxTitle < 0 {
+		maxTitle = 0
+	}
+	if len(titleRunes) > maxTitle {
+		titleRunes = titleRunes[:maxTitle]
+	}
+	titleStart := x + 2 // after corner + one horizontal char
+	spaceAfter := titleStart + len(titleRunes) + 1
 	for col := x + 1; col < x+w-1; col++ {
-		setClipped(canvas, col, y, cell(chars.H), clip)
+		if len(titleRunes) > 0 && col == titleStart {
+			setClipped(canvas, col, y, Cell{Rune: ' ', FG: fg, BG: bg}, clip)
+		} else if len(titleRunes) > 0 && col > titleStart && col <= titleStart+len(titleRunes) {
+			setClipped(canvas, col, y, Cell{Rune: titleRunes[col-titleStart-1], FG: fg, BG: bg}, clip)
+		} else if len(titleRunes) > 0 && col == spaceAfter {
+			setClipped(canvas, col, y, Cell{Rune: ' ', FG: fg, BG: bg}, clip)
+		} else {
+			setClipped(canvas, col, y, cell(chars.H), clip)
+		}
+	}
+
+	// Bottom edge.
+	for col := x + 1; col < x+w-1; col++ {
 		setClipped(canvas, col, y+h-1, cell(chars.H), clip)
 	}
 

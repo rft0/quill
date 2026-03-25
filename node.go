@@ -32,11 +32,16 @@ type Node struct {
 	showCursor bool
 	cursorPos  int
 
-	// progressValue is used by ProgressBar for rendering.
+	// isProgress marks this node as a progress bar, rendered dynamically
+	// based on available width. progressValue is the fill ratio (0–1).
+	isProgress    bool
 	progressValue float64
 
 	// scrollState is set by ScrollView for clipped scrolling.
 	scrollState *ScrollState
+
+	// borderTitle is optional text rendered on the top border edge.
+	borderTitle string
 
 	// debug causes colored outlines to be drawn around this node
 	// and all descendants, for visualizing the layout tree.

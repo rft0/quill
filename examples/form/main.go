@@ -9,44 +9,46 @@ import (
 
 func Form(ctx *ll.Context) *ll.Node {
 	name := ll.UseRef(ctx, ll.InputState{})
-	email := ll.UseRef(ctx, ll.InputState{})
-	focus := ll.UseRef(ctx, ll.FocusGroup{})
+	password := ll.UseRef(ctx, ll.InputState{Hidden: true})
+	submitted := ll.UseState(ctx, false)
 
-	ll.UseEffect(ctx, func() {
-		*focus = ll.NewFocusGroup(name, email)
+	ll.UseForm(ctx, ll.FormConfig{
+		Fields: []ll.Focusable{name, password},
+		OnSubmit: func() {
+			submitted.Set(true)
+		},
 	})
 
 	ll.OnKey(ctx, func(key ll.KeyMsg) {
-		switch key.Type {
-		case ll.KeyCtrlC, ll.KeyEscape:
+		if key.Type == ll.KeyCtrlC || key.Type == ll.KeyEscape {
 			ctx.Quit()
-		case ll.KeyTab, ll.KeyEnter:
-			focus.Next()
-		default:
-			focus.Update(key)
 		}
 	})
 
-	return ll.Box(ll.FlexColumn, ll.BorderRounded, ll.PadXY(1, 1),
-		ll.Text("Sign Up", ll.Bold, ll.TextColor(ll.Cyan)),
+	if submitted.Get() {
+		return ll.Box(ll.FlexColumn,
+			ll.Text(fmt.Sprintf("Welcome, %s!", name.Value), ll.TextColor(ll.Green), ll.Bold),
+		)
+	}
 
-		ll.Box(ll.MarginTop(1),
-			ll.Text("Name: ", ll.TextColor(ll.White), ll.Bold),
+	return ll.Box(ll.Title("Sign Up"), ll.BorderColor(ll.Blue), ll.FlexColumn, ll.BorderRounded, ll.PadXY(1, 1),
+		ll.Box(
+			ll.Text("Username: ", ll.TextColor(ll.White), ll.Bold),
 			ll.Input(name, ll.TextColor(ll.Yellow)),
 		),
 
 		ll.Box(
-			ll.Text("Email: ", ll.TextColor(ll.White), ll.Bold),
-			ll.Input(email, ll.TextColor(ll.Yellow)),
+			ll.Text("Password: ", ll.TextColor(ll.White), ll.Bold),
+			ll.Input(password, ll.TextColor(ll.Yellow)),
 		),
 
-		ll.Text("TAB to switch · ESC to quit", ll.MarginTop(1), ll.TextColor(ll.Gray)),
+		ll.Text("TAB to switch · ENTER to submit · ESC to quit", ll.MarginTop(1), ll.TextColor(ll.Gray)),
 	)
 }
 
 func main() {
 	app := ll.New(Form)
-	app.SetCursor(ll.CursorBar)
+	app.ExitOnCtrlC()
 	if err := app.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)

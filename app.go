@@ -12,35 +12,44 @@ import (
 )
 
 // App ties together a Component, the terminal, and the event loop.
-// By default it renders inline (content-sized, like Ink/iocraft).
-// Call Fullscreen() before Run to take over the entire terminal instead.
+// By default it renders inline (content-sized). Use [WithFullscreen]
+// to take over the entire terminal instead.
 type App struct {
-	component   Component
-	cursorStyle CursorStyle
-	mouse       bool
-	fullscreen  bool
+	component    Component
+	cursorStyle  CursorStyle
+	mouse        bool
+	fullscreen   bool
+	exitOnCtrlC  bool
 }
+
+// Option configures an [App]. Pass options to [New].
+type Option func(*App)
+
+// WithFullscreen makes the app take over the entire terminal using the
+// alternate screen buffer. Without this, the app renders inline.
+func WithFullscreen() Option { return func(a *App) { a.fullscreen = true } }
+
+// WithMouse enables mouse event tracking (SGR protocol).
+func WithMouse() Option { return func(a *App) { a.mouse = true } }
+
+// WithCursor sets the terminal cursor shape.
+func WithCursor(style CursorStyle) Option { return func(a *App) { a.cursorStyle = style } }
 
 // New creates an App that drives the given component.
-func New(c Component) *App {
-	return &App{component: c}
+//
+//	quill.New(MyApp, quill.WithFullscreen(), quill.WithMouse()).Run()
+func New(c Component, opts ...Option) *App {
+	a := &App{component: c}
+	for _, opt := range opts {
+		opt(a)
+	}
+	return a
 }
 
-// SetCursor changes the terminal cursor shape. Call before Run or from
-// within a hook (the change takes effect on the next render).
-func (a *App) SetCursor(style CursorStyle) {
-	a.cursorStyle = style
-}
-
-// EnableMouse enables mouse event tracking. Call before Run.
-func (a *App) EnableMouse() {
-	a.mouse = true
-}
-
-// Fullscreen makes the app take over the entire terminal using the
-// alternate screen buffer. Without this, the app renders inline.
-func (a *App) Fullscreen() {
-	a.fullscreen = true
+// ExitOnCtrlC adds a default Ctrl+C handler that quits the app.
+func (a *App) ExitOnCtrlC() *App {
+	a.exitOnCtrlC = true
+	return a
 }
 
 // cursorSeq returns the ANSI escape sequence for the configured cursor.
@@ -169,6 +178,13 @@ func (a *App) Run() error {
 		batch.pending = false
 		batch.mu.Unlock()
 
+		if a.exitOnCtrlC {
+			OnKey(ctx, func(key KeyMsg) {
+				if key.Type == KeyCtrlC {
+					ctx.Quit()
+				}
+			})
+		}
 		root := a.component(ctx)
 		cmd = ctx.cmd
 

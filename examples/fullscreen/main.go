@@ -10,16 +10,11 @@ import (
 
 func App(ctx *ll.Context) *ll.Node {
 	clock := ll.UseState(ctx, "")
-	frame := ll.UseState(ctx, 0)
 	width := ll.UseState(ctx, 0)
 	height := ll.UseState(ctx, 0)
 
 	ll.UseInterval(ctx, time.Second, func() {
 		clock.Set(time.Now().Format("15:04:05"))
-	})
-
-	ll.UseInterval(ctx, 80*time.Millisecond, func() {
-		frame.Set((frame.Get() + 1) % len(ll.SpinnerDots))
 	})
 
 	ll.OnResize(ctx, func(w, h int) {
@@ -42,7 +37,7 @@ func App(ctx *ll.Context) *ll.Node {
 
 		// Clock
 		ll.Box(ll.FlexRow, ll.Gap(1), ll.MarginY(1),
-			ll.Spinner(frame.Get(), ll.SpinnerDots, ll.TextColor(ll.Yellow)),
+			ll.Spinner(ctx, ll.SpinnerDots, ll.TextColor(ll.Yellow)),
 			ll.Text(clock.Get(), ll.TextColor(ll.BrightWhite), ll.Bold),
 		),
 
@@ -60,9 +55,7 @@ func App(ctx *ll.Context) *ll.Node {
 }
 
 func main() {
-	app := ll.New(App)
-	app.Fullscreen()
-	if err := app.Run(); err != nil {
+	if err := ll.New(App, ll.WithFullscreen()).Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}

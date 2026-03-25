@@ -48,9 +48,7 @@ func MouseDemo(ctx *ll.Context) *ll.Node {
 }
 
 func main() {
-	app := ll.New(MouseDemo)
-	app.EnableMouse()
-	if err := app.Run(); err != nil {
+	if err := ll.New(MouseDemo, ll.WithMouse()).Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}

@@ -1,11 +1,14 @@
 package quill
 
+import "strings"
+
 // InputState holds the mutable state of a text input.
 // Keep this in your component struct and pass a pointer to Input().
 type InputState struct {
 	Value    string
 	Cursor   int
 	Focused  bool
+	Hidden   bool         // when true, display mask characters instead of actual value
 	OnSubmit func(string) // called when Enter is pressed while focused
 }
 
@@ -15,22 +18,22 @@ func (s *InputState) Focus() { s.Focused = true }
 // Blur removes keyboard focus.
 func (s *InputState) Blur() { s.Focused = false }
 
-// Update processes a keyboard event. Call from your component's Update.
-func (s *InputState) Update(msg Msg) Cmd {
+// Update processes a keyboard event. Call from your component's OnKey handler.
+func (s *InputState) Update(msg Msg) {
 	if !s.Focused {
-		return nil
+		return
 	}
 
 	key, ok := msg.(KeyMsg)
 	if !ok {
-		return nil
+		return
 	}
 
 	if key.Type == KeyEnter {
 		if s.OnSubmit != nil {
 			s.OnSubmit(s.Value)
 		}
-		return nil
+		return
 	}
 
 	runes := []rune(s.Value)
@@ -82,8 +85,6 @@ func (s *InputState) Update(msg Msg) Cmd {
 	case KeyCtrlK:
 		s.Value = string(runes[:cur])
 	}
-
-	return nil
 }
 
 func (s *InputState) runePos() int {
@@ -101,7 +102,11 @@ func (s *InputState) VisualCol() int {
 //
 //	quill.Input(&f.name, quill.TextColor(quill.Yellow))
 func Input(state *InputState, args ...any) *Node {
-	n := NewText(state.Value)
+	display := state.Value
+	if state.Hidden {
+		display = strings.Repeat("•", len([]rune(state.Value)))
+	}
+	n := NewText(display)
 	n.Style.FlexGrow = 1
 
 	for _, arg := range args {
@@ -122,7 +127,7 @@ func Input(state *InputState, args ...any) *Node {
 type Focusable interface {
 	Focus()
 	Blur()
-	Update(Msg) Cmd
+	Update(Msg)
 }
 
 // FocusGroup manages focus across multiple focusable widgets.
@@ -139,6 +144,19 @@ func NewFocusGroup(items ...Focusable) FocusGroup {
 	if len(items) > 0 {
 		items[0].Focus()
 	}
+	return fg
+}
+
+// UseFocusGroup creates a [FocusGroup] as a hook, eliminating the
+// UseRef + UseEffect boilerplate. The first item is focused automatically
+// on mount.
+//
+//	focus := quill.UseFocusGroup(ctx, name, email, password)
+func UseFocusGroup(ctx *Context, items ...Focusable) *FocusGroup {
+	fg := UseRef(ctx, FocusGroup{})
+	UseEffect(ctx, func() {
+		*fg = NewFocusGroup(items...)
+	})
 	return fg
 }
 
@@ -162,10 +180,62 @@ func (fg *FocusGroup) Prev() {
 	fg.items[fg.index].Focus()
 }
 
+// FormConfig configures a [UseForm] hook.
+type FormConfig struct {
+	Fields   []Focusable // form fields in tab order
+	OnSubmit func()      // called when Enter is pressed on the last field
+}
+
+// Form manages a group of form fields with focus cycling and submission.
+type Form struct {
+	focus    FocusGroup
+	onSubmit func()
+}
+
+// UseForm creates a form that manages focus cycling (Tab/Shift+Tab),
+// routes key events to the focused field, and calls OnSubmit when
+// Enter is pressed on the last field.
+//
+//	form := quill.UseForm(ctx, quill.FormConfig{
+//	    Fields:   []quill.Focusable{name, email, password},
+//	    OnSubmit: func() { /* submit */ },
+//	})
+func UseForm(ctx *Context, cfg FormConfig) *Form {
+	f := UseRef(ctx, Form{})
+	UseEffect(ctx, func() {
+		f.focus = NewFocusGroup(cfg.Fields...)
+		f.onSubmit = cfg.OnSubmit
+	})
+
+	OnKey(ctx, func(key KeyMsg) {
+		switch key.Type {
+		case KeyTab:
+			f.focus.Next()
+		case KeyShiftTab:
+			f.focus.Prev()
+		case KeyEnter:
+			if f.focus.IsLast() && f.onSubmit != nil {
+				f.onSubmit()
+			} else {
+				f.focus.Next()
+			}
+		default:
+			f.focus.Update(key)
+		}
+	})
+
+	return f
+}
+
+// IsLast returns true if the last item in the group is focused.
+func (fg *FocusGroup) IsLast() bool {
+	return len(fg.items) > 0 && fg.index == len(fg.items)-1
+}
+
 // Update forwards the message to the currently focused item.
-func (fg *FocusGroup) Update(msg Msg) Cmd {
+func (fg *FocusGroup) Update(msg Msg) {
 	if len(fg.items) == 0 {
-		return nil
+		return
 	}
-	return fg.items[fg.index].Update(msg)
+	fg.items[fg.index].Update(msg)
 }

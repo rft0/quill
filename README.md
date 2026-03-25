@@ -1,120 +1,203 @@
-# Quill
+<div align="center">
+	<br>
+	<br>
+	<h1>Quill</h1>
+	<br>
+	<br>
+</div>
 
-A Go library for building terminal UIs with a React-like hooks API and CSS Flexbox layout engine. Renders inline (content-sized) by default, or fullscreen.
+> React for terminal UIs in Go. Build interactive CLI apps with hooks, components, and flexbox.
 
-```
+Quill provides a React-like component model for building terminal user interfaces in Go. It uses a built-in CSS Flexbox layout engine, so most layout properties you know from the web work out of the box. If you're familiar with React hooks, you already know Quill.
+
+Renders inline (content-sized) by default. One external dependency: `golang.org/x/term`.
+
+## Install
+
+```sh
 go get github.com/rft0/quill
 ```
 
-## Quick Start
+## Usage
 
 ```go
-package main
-
 import (
-	"fmt"
-	"os"
+    "fmt"
+    "os"
+    "time"
 
-	ll "github.com/rft0/quill"
+    ll "github.com/rft0/quill"
 )
 
-func App(ctx *ll.Context) *ll.Node {
-	ll.OnKey(ctx, func(key ll.KeyMsg) {
-		if key.Type == ll.KeyEscape || key.Type == ll.KeyCtrlC {
-			ctx.Quit()
-		}
-	})
+func Counter(ctx *ll.Context) *ll.Node {
+    count := ll.UseState(ctx, 0)
 
-	return ll.Box(ll.BorderRounded,
-		ll.Text("Hello, World!", ll.TextColor(ll.White), ll.Bold),
-	)
+    ll.UseInterval(ctx, time.Millisecond*100, func() {
+        count.Set(count.Get() + 1)
+    })
+
+    return ll.Box(
+        ll.Text("Count: ", ll.TextColor(ll.Green), ll.Bold),
+        ll.Text(fmt.Sprintf("%d", count.Get()), ll.TextColor(ll.Cyan), ll.Bold),
+    )
 }
 
 func main() {
-	if err := ll.New(App).Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
+    app := ll.New(Counter)
+    app.ExitOnCtrlC()
+    if err := app.Run(); err != nil {
+        fmt.Fprintf(os.Stderr, "error: %v\n", err)
+        os.Exit(1)
+    }
 }
+```
+
+<img src="img/counter.gif" width="600">
+
+## Contents
+
+- [Components](#components)
+  - [`Box`](#box)
+  - [`Text`](#text)
+- [Layout](#layout)
+- [Hooks](#hooks)
+  - [`UseState`](#usestate)
+  - [`UseRef`](#useref)
+  - [`UseMemo`](#usememo)
+  - [`UseEffect`](#useeffect)
+  - [`UseInterval` / `UseAfter`](#useinterval--useafter)
+  - [`UseContext`](#usecontext)
+  - [`UseForm`](#useform)
+  - [`UseTween` / `UseSpring`](#usetween--usespring)
+- [Event Handlers](#event-handlers)
+- [Widgets](#widgets)
+  - [`Input`](#input)
+  - [`Textarea`](#textarea)
+  - [`Select`](#select)
+  - [`Checkbox`](#checkbox)
+  - [`ProgressBar`](#progressbar)
+  - [`Spinner`](#spinner)
+  - [`ScrollView`](#scrollview)
+  - [`List`](#list)
+  - [`Table`](#table)
+  - [`Modal`](#modal)
+  - [`Notify`](#notify)
+- [Focus Management](#focus-management)
+- [Conditional Rendering](#conditional-rendering)
+- [Colors](#colors)
+- [App Configuration](#app-configuration)
+- [Testing](#testing)
+- [Examples](#examples)
+
+## Components
+
+Quill apps are built from functional components. A component is a function that takes a `*Context` and returns a `*Node`.
+
+```go
+func MyComponent(ctx *ll.Context) *ll.Node {
+    return ll.Box(
+        ll.Text("Hello!"),
+    )
+}
+```
+
+Compose components using `ctx.Render`:
+
+```go
+func App(ctx *ll.Context) *ll.Node {
+    return ll.Box(ll.FlexColumn,
+        ctx.Render("header", Header),
+        ctx.Render("body", Body),
+    )
+}
+```
+
+### `Box`
+
+Flex container. Takes any mix of children (`*Node`) and props.
+
+```go
+ll.Box(ll.FlexColumn, ll.Gap(1), ll.BorderRounded, ll.PadXY(1, 1),
+    ll.Text("Title", ll.Bold),
+    ll.Text("Subtitle", ll.TextColor(ll.Gray)),
+)
+```
+
+Boxes take all available horizontal space by default (`FlexGrow: 1`). Use `Grow(0)` to opt out.
+
+#### Title
+
+Boxes with borders can display a title on the top edge:
+
+```go
+ll.Box(ll.BorderRounded, ll.Title("My Panel"),
+    ll.Text("content"),
+)
+// ╭─ My Panel ────────╮
+// │ content            │
+// ╰───────────────────╯
+```
+
+### `Text`
+
+Styled text leaf node.
+
+```go
+ll.Text("Hello!", ll.Bold, ll.Italic, ll.TextColor(ll.Green))
 ```
 
 ## Layout
 
-Build UIs with `Box` (flex container) and `Text` (styled text leaf). Props and children can be freely mixed in the argument list.
+Quill uses a CSS Flexbox layout engine. All the usual properties are available as props.
 
-```go
-ll.Box(ll.FlexColumn, ll.Gap(1), ll.BorderRounded, ll.PadXY(1, 1),
-    ll.Text("Hello", ll.Bold, ll.TextColor(ll.Green)),
-    ll.Box(ll.FlexRow, ll.JustifySpaceBetween,
-        ll.Text("Left"),
-        ll.Text("Right"),
-    ),
-)
-```
+**Direction:** `FlexRow` (default), `FlexColumn`
 
-**Direction:** `FlexRow`, `FlexColumn`
+**Wrap:** `FlexWrapWrap`
 
-**Wrap:** `FlexWrapWrap` — children flow onto multiple lines when they exceed the main axis
+**Justify (main axis):** `JustifyFlexStart`, `JustifyFlexEnd`, `JustifyCenter`, `JustifySpaceBetween`, `JustifySpaceAround`
 
-**Alignment:** `JustifyCenter`, `JustifySpaceBetween`, `JustifySpaceAround`, `JustifyFlexStart`, `JustifyFlexEnd`, `AlignCenter`, `AlignStretch`, `AlignFlexStart`, `AlignFlexEnd`
+**Align (cross axis):** `AlignStretch` (default), `AlignFlexStart`, `AlignFlexEnd`, `AlignCenter`
 
-**Sizing:** `Width()`, `Height()`, `MinWidth()`, `MaxWidth()`, `MinHeight()`, `MaxHeight()`, `Grow()`, `Shrink()`, `Basis()` — values via `Px()`, `Pct()`, or `AutoDim()`
+**Sizing:** `Width()`, `Height()`, `MinWidth()`, `MaxWidth()`, `MinHeight()`, `MaxHeight()`, `Grow()`, `Shrink()`, `Basis()` — accepts `Px()`, `Pct()`, or `AutoDim()`
 
 **Spacing:** `Gap()`, `Padding()`, `PaddingX()`, `PaddingY()`, `PadXY()`, `Margin()`, `MarginTop()`, `MarginRight()`, `MarginBottom()`, `MarginLeft()`
 
-**Borders:** `BorderSingle`, `BorderDouble`, `BorderRounded`, `BorderThick`, `BorderColor()`
-
-**Text styling:** `Bold`, `Italic`, `Underline`, `Dim`, `Strikethrough`, `Reverse`, `TextColor()`, `BackgroundColor()`
-
-**Colors:** `Black`, `Red`, `Green`, `Yellow`, `Blue`, `Magenta`, `Cyan`, `White`, `Gray`, `BrightRed`...`BrightWhite`, `RGBColor(r, g, b)`, `LerpColor(from, to, t)`, `Gradient(from, to, n)`
-
-**Overflow:** `Ellipsis`, `ClipText`
+**Borders:** `BorderSingle`, `BorderDouble`, `BorderRounded`, `BorderThick`
 
 **Positioning:** `Absolute`, `Left()`, `Top()`, `Right()`, `Bottom()`, `ZIndex()`
 
-**Debug:** `Debug` — draws colored outlines around the node and all descendants
+**Text:** `Bold`, `Italic`, `Underline`, `Dim`, `Strikethrough`, `Reverse`
 
-## Conditional Rendering
+**Overflow:** `Ellipsis`, `ClipText`
 
-`If` and `IfElse` keep the declarative flow clean — nil nodes are safely ignored by `Box`.
-
-```go
-ll.Box(ll.FlexColumn,
-    ll.If(showHeader, ll.Text("Header", ll.Bold)),
-    ll.IfElse(loggedIn,
-        ll.Text("Welcome back!", ll.TextColor(ll.Green)),
-        ll.Text("Please log in", ll.TextColor(ll.Gray)),
-    ),
-    ll.Text("Always visible"),
-)
-```
+**Debug:** `Debug` — draws colored outlines around every node for layout visualization
 
 ## Hooks
 
-Hooks must be called in the same order every render, just like React.
+Hooks must be called in the same order every render, just like React. They are package-level functions because Go doesn't support generic methods on structs.
 
-### UseState
+### `UseState`
 
-Reactive state that triggers re-renders on change.
+Reactive state that triggers re-renders on change. Thread-safe.
 
 ```go
 count := ll.UseState(ctx, 0)
-count.Get()                  // read
-count.Set(count.Get() + 1)  // write — triggers re-render
+count.Get()                 // read
+count.Set(count.Get() + 1)  // write + re-render
 ```
 
-### UseRef
+### `UseRef`
 
-Stable mutable pointer that survives re-renders without triggering them.
+Stable mutable pointer across renders. Does **not** trigger re-renders.
 
 ```go
 input := ll.UseRef(ctx, ll.InputState{})
-input.Value // direct field access
+input.Value  // direct field access
 ```
 
-### UseMemo
+### `UseMemo`
 
-Cached computation, recomputed when dependencies change.
+Cached computation, recomputed only when deps change.
 
 ```go
 label := ll.UseMemo(ctx, func() string {
@@ -122,26 +205,31 @@ label := ll.UseMemo(ctx, func() string {
 }, count.Get())
 ```
 
-### UseEffect
+### `UseEffect`
 
-Side effects that run once, or again when deps change. Return a cleanup function to run before re-execution and on app exit.
+Side effects on mount or when deps change.
 
 ```go
-// Without cleanup
+// Run once on mount
+ll.UseEffect(ctx, func() {
+    go fetchData()
+})
+
+// Re-run when deps change
 ll.UseEffect(ctx, func() {
     go fetchData(id.Get())
 }, id.Get())
 
-// With cleanup
+// With cleanup (runs before re-execution and on exit)
 ll.UseEffectWithCleanup(ctx, func() func() {
     conn := connect()
     return func() { conn.Close() }
 })
 ```
 
-### UseInterval / UseAfter
+### `UseInterval` / `UseAfter`
 
-Timer hooks for periodic or delayed callbacks.
+Timer hooks.
 
 ```go
 ll.UseInterval(ctx, time.Second, func() {
@@ -149,80 +237,116 @@ ll.UseInterval(ctx, time.Second, func() {
 })
 
 ll.UseAfter(ctx, 3*time.Second, func() {
-    // runs once after delay
+    show.Set(false)
 })
 ```
 
-### UseContext
+### `UseContext`
 
-Share data down the component tree without prop drilling.
+Share data down the tree without prop drilling.
 
 ```go
-// Define a key (typically at package level)
 var ThemeKey = ll.NewContextKey("light")
 
-// Provide in a parent component
-func App(ctx *ll.Context) *ll.Node {
-    ll.ProvideContext(ctx, ThemeKey, "dark")
-    return ctx.Render("child", ChildComponent)
-}
+// Parent provides
+ll.ProvideContext(ctx, ThemeKey, "dark")
 
-// Consume in any descendant
-func ChildComponent(ctx *ll.Context) *ll.Node {
-    theme := ll.UseContext(ctx, ThemeKey) // "dark"
-    // ...
-}
+// Any descendant reads
+theme := ll.UseContext(ctx, ThemeKey)  // "dark"
 ```
 
-### Event Handlers
+### `UseForm`
+
+Manages focus cycling and form submission across multiple fields.
+
+```go
+name := ll.UseRef(ctx, ll.InputState{})
+email := ll.UseRef(ctx, ll.InputState{})
+
+ll.UseForm(ctx, ll.FormConfig{
+    Fields:   []ll.Focusable{name, email},
+    OnSubmit: func() { /* called on Enter at last field */ },
+})
+```
+
+<img src="img/form.gif" width="600">
+
+Tab/Shift+Tab cycles focus. Enter advances to the next field, or calls `OnSubmit` on the last one.
+
+### `UseTween` / `UseSpring`
+
+Animation hooks for smooth transitions.
+
+```go
+// Linear tween to target over duration
+opacity := ll.UseTween(ctx, 1.0, 300*time.Millisecond)
+
+// Spring physics animation
+x := ll.UseSpring(ctx, targetX)
+```
+
+## Event Handlers
 
 ```go
 ll.OnKey(ctx, func(key ll.KeyMsg) {
     switch key.Type {
     case ll.KeyEnter:
-        // handle enter
+        // handle
     case ll.KeyCtrlC:
         ctx.Quit()
     }
 })
 
-ll.OnMouse(ctx, func(mouse ll.MouseMsg) {
-    // mouse.Type, mouse.X, mouse.Y
+ll.OnMouse(ctx, func(m ll.MouseMsg) {
+    // m.Type, m.X, m.Y
 })
 
-ll.OnResize(ctx, func(resize ll.ResizeMsg) {
-    // resize.Width, resize.Height
+ll.OnResize(ctx, func(w, h int) {
+    // terminal resized
 })
 ```
 
+Use `ctx.StopPropagation()` to prevent events from reaching other handlers.
+
 ## Widgets
 
-### Input
+### `Input`
 
-Single-line text input with cursor and full editing support.
+Single-line text input with cursor, full editing (backspace, delete, home/end, ctrl+u/k), and focus support.
 
 ```go
 name := ll.UseRef(ctx, ll.InputState{})
 ll.Input(name, ll.TextColor(ll.Yellow))
 ```
 
-### Textarea
+Set `Hidden: true` for password fields:
 
-Multi-line text input.
+```go
+password := ll.UseRef(ctx, ll.InputState{Hidden: true})
+ll.Input(password)  // displays ••••••
+```
 
-### Select
+### `Textarea`
+
+Multi-line text input with line navigation.
+
+```go
+editor := ll.UseRef(ctx, ll.TextareaState{})
+ll.Textarea(editor, ll.TextColor(ll.White))
+```
+
+### `Select`
 
 List picker with j/k/arrow navigation.
 
 ```go
 sel := ll.UseRef(ctx, ll.SelectState{
     Options: []string{"Option A", "Option B", "Option C"},
-    Focused: true,
 })
 ll.Select(sel, ll.TextColor(ll.Cyan))
 ```
 
-### Checkbox
+### `Checkbox`
 
 Toggle with label.
 
@@ -231,27 +355,25 @@ check := ll.UseRef(ctx, ll.CheckboxState{Checked: true})
 ll.Checkbox(check, "Enable feature", ll.TextColor(ll.Green))
 ```
 
-### ProgressBar
+### `ProgressBar`
 
-Horizontal progress bar (0.0 to 1.0), fills available width.
+Fills available width. Value from 0.0 to 1.0.
 
 ```go
 ll.ProgressBar(0.75, ll.TextColor(ll.White))
 ```
 
-### Spinner
+### `Spinner`
 
-Animated spinner with built-in frame sets (`SpinnerDots`, `SpinnerLine`, `SpinnerBlock`).
+Self-animating spinner. Built-in frame sets: `SpinnerDots`, `SpinnerLine`, `SpinnerBlock`.
 
 ```go
-frame := ll.UseState(ctx, 0)
-ll.UseInterval(ctx, 80*time.Millisecond, func() {
-    frame.Set((frame.Get() + 1) % len(ll.SpinnerDots))
-})
-ll.Spinner(frame.Get(), ll.SpinnerDots, ll.TextColor(ll.Cyan))
+ll.Spinner(ctx, ll.SpinnerDots, ll.TextColor(ll.Cyan))
 ```
 
-### ScrollView
+<img src="img/widgets.png" width="600">
+
+### `ScrollView`
 
 Clipped scrollable container.
 
@@ -262,65 +384,61 @@ ll.ScrollView(scroll, ll.Height(ll.Px(10)),
 )
 ```
 
-### Table
+`ScrollState` provides `ScrollUp`, `ScrollDown`, `PageUp`, `PageDown` methods.
 
-Column-aligned data table with borders.
+<img src="img/scroll.gif" width="600">
 
-```go
-ll.Table(
-    []string{"Name", "Age", "City"},
-    [][]string{
-        {"Alice", "30", "NYC"},
-        {"Bob", "25", "LA"},
-    },
-)
-```
+### `List`
 
-### FocusGroup
-
-Manages Tab/Shift+Tab focus cycling across multiple inputs.
+Virtualized scrollable list for large datasets. Only renders visible items.
 
 ```go
-name := ll.UseRef(ctx, ll.InputState{})
-email := ll.UseRef(ctx, ll.InputState{})
-focus := ll.UseRef(ctx, ll.FocusGroup{})
-
-ll.UseEffect(ctx, func() {
-    *focus = ll.NewFocusGroup(name, email)
-})
-
-ll.OnKey(ctx, func(key ll.KeyMsg) {
-    switch key.Type {
-    case ll.KeyTab:
-        focus.Next()
-    default:
-        focus.Update(key)
-    }
-})
-```
-
-### List
-
-Virtualized scrollable list for large datasets — only renders visible items.
-
-```go
-items := []string{"Item 1", "Item 2", /* ... thousands ... */}
+items := []string{"Item 1", "Item 2", /* ...thousands... */}
 list := ll.UseRef(ctx, ll.ListState{Focused: true})
 
 ll.OnKey(ctx, func(key ll.KeyMsg) { list.Update(key) })
 
 ll.List(list, 10, len(items), func(i int, selected bool) *ll.Node {
-    n := ll.Text(items[i], ll.TextColor(ll.White))
+    color := ll.White
     if selected {
-        n.Paint.Reverse = true
+        color = ll.Cyan
     }
-    return n
+    return ll.Text(items[i], ll.TextColor(color))
 })
 ```
 
-### Notify
+### `Table`
 
-Absolutely positioned toast notification at the top-right. Control visibility with `If` and timing with `UseAfter`.
+Column-aligned data table with borders and alignment.
+
+```go
+ll.Table(
+    []ll.TableColumn{
+        {Header: "Name", Width: 20},
+        {Header: "Age", Width: 5, Align: ll.TableAlignRight},
+    },
+    [][]string{
+        {"Alice", "30"},
+        {"Bob", "25"},
+    },
+)
+```
+
+### `Modal`
+
+Centered overlay positioned above other content.
+
+```go
+ll.If(showModal, ll.Modal(
+    ll.Box(ll.BorderRounded, ll.PadXY(2, 1), ll.BackgroundColor(ll.Black),
+        ll.Text("Are you sure?", ll.Bold),
+    ),
+))
+```
+
+### `Notify`
+
+Toast notification positioned at the top-right.
 
 ```go
 show := ll.UseState(ctx, true)
@@ -332,71 +450,167 @@ ll.If(show.Get(), ll.Notify(
 ))
 ```
 
-### Modal
+## Focus Management
 
-Absolutely positioned overlay that centers content and renders above other children.
+### `FocusGroup`
+
+Manage Tab/Shift+Tab cycling across focusable widgets.
 
 ```go
-ll.Box(ll.FlexColumn, ll.Width(60), ll.Height(20),
-    ll.Text("Background content"),
-    ll.If(showModal, ll.Modal(
-        ll.Box(ll.BorderRounded, ll.PadXY(2, 1), ll.BackgroundColor(ll.Black),
-            ll.Text("Are you sure?", ll.Bold),
-        ),
-        ll.BackgroundColor(ll.RGBColor(0, 0, 0)),
-    )),
-)
+focus := ll.UseFocusGroup(ctx, name, email, password)
+
+ll.OnKey(ctx, func(key ll.KeyMsg) {
+    switch key.Type {
+    case ll.KeyTab:
+        focus.Next()
+    case ll.KeyShiftTab:
+        focus.Prev()
+    default:
+        focus.Update(key)
+    }
+})
 ```
 
-### FocusBorderColor
+### `FocusBorderColor`
 
-Returns the active or inactive border color based on focus state.
+Shorthand for focus-aware border colors.
 
 ```go
 ll.Box(ll.BorderRounded, ll.FocusBorderColor(name.Focused, ll.Cyan, ll.Gray),
-    ll.Input(name, ll.TextColor(ll.Yellow)),
+    ll.Input(name),
 )
 ```
 
-### Gradient Colors
+## Conditional Rendering
 
-Interpolate between colors for visual effects.
+`If` and `IfElse` keep the declarative flow clean. Nil nodes are safely ignored by `Box`.
 
 ```go
-// Single interpolation
-mid := ll.LerpColor(ll.Red, ll.Blue, 0.5)
+ll.Box(ll.FlexColumn,
+    ll.If(showHeader, ll.Text("Header", ll.Bold)),
+    ll.IfElse(loggedIn,
+        ll.Text("Welcome back!", ll.TextColor(ll.Green)),
+        ll.Text("Please log in", ll.TextColor(ll.Gray)),
+    ),
+)
+```
 
-// Generate a gradient palette
-colors := ll.Gradient(ll.RGBColor(255, 0, 0), ll.RGBColor(0, 0, 255), 20)
-for i, char := range "Hello gradient world!" {
-    children = append(children, ll.Text(string(char), ll.TextColor(colors[i])))
-}
+## Colors
+
+**Named:** `Black`, `Red`, `Green`, `Yellow`, `Blue`, `Magenta`, `Cyan`, `White`, `Gray`, `BrightRed` ... `BrightWhite`
+
+**24-bit:** `RGBColor(r, g, b)`
+
+**ANSI 256:** `ANSIColor(n)`
+
+**Interpolation:**
+
+```go
+mid := ll.LerpColor(ll.Red, ll.Blue, 0.5)
+palette := ll.Gradient(ll.RGBColor(255, 0, 0), ll.RGBColor(0, 0, 255), 20)
 ```
 
 ## App Configuration
 
 ```go
-app := ll.New(MyComponent)
-app.SetCursor(ll.CursorBar)   // cursor style: CursorBar, CursorBlock, CursorUnderline
-app.EnableMouse()              // enable mouse event tracking
-app.Fullscreen()               // use alternate screen buffer
-if err := app.Run(); err != nil {
-    log.Fatal(err)
+app := ll.New(MyComponent,
+    ll.WithFullscreen(),  // alternate screen buffer
+    ll.WithMouse(),       // enable mouse tracking
+)
+app.ExitOnCtrlC()  // built-in Ctrl+C handler
+app.Run()
+```
+
+| Option | Description |
+|---|---|
+| `WithFullscreen()` | Use alternate screen buffer (full terminal) |
+| `WithMouse()` | Enable SGR mouse event tracking |
+| `WithCursor(style)` | Set terminal cursor shape |
+| `ExitOnCtrlC()` | Add default Ctrl+C quit handler |
+
+## Testing
+
+Quill includes a test harness for headless rendering.
+
+```go
+func TestMyComponent(t *testing.T) {
+    app := ll.NewTestApp(MyComponent, 80)
+    output := app.Output()  // rendered string
+
+    app.SendKey(ll.KeyMsg{Type: ll.KeyEnter})
+    output = app.Output()   // after keypress
 }
+```
+
+`RenderToString` for quick snapshot tests:
+
+```go
+root := ll.Box(ll.Text("hello"))
+got := ll.RenderToString(root, 40)
 ```
 
 ## Examples
 
-Run the included examples:
+<table>
+<tr>
+<td>
+
+**Hello World** <br> `go run ./examples/hello/`
+
+<img src="img/hello.png" width="280">
+
+</td>
+<td>
+
+**Counter** <br> `go run ./examples/counter/`
+
+<img src="img/counter.gif" width="280">
+
+</td>
+</tr>
+<tr>
+<td>
+
+**Form** <br> `go run ./examples/form/`
+
+<img src="img/form.gif" width="280">
+
+</td>
+<td>
+
+**Widgets** <br> `go run ./examples/widgets/`
+
+<img src="img/widgets.png" width="280">
+
+</td>
+</tr>
+<tr>
+<td>
+
+**Mouse** <br> `go run ./examples/mouse/`
+
+<img src="img/mouse.gif" width="280">
+
+</td>
+<td>
+
+**Scroll** <br> `go run ./examples/scroll/`
+
+<img src="img/scroll.gif" width="280">
+
+</td>
+</tr>
+</table>
 
 ```bash
-go run ./examples/counter/    # Counter with state and intervals
-go run ./examples/form/       # Form inputs with focus management
-go run ./examples/widgets/    # Spinner, progress bar, checkbox, select
-go run ./examples/nested/     # Component composition
-go run ./examples/scroll/     # Scrollable container
-go run ./examples/mouse/      # Mouse event handling
-go run ./examples/fullscreen/ # Fullscreen mode
+go run ./examples/hello/       # Hello world
+go run ./examples/counter/     # Counter with state and intervals
+go run ./examples/form/        # Form with focus management
+go run ./examples/widgets/     # Spinner, progress, checkbox, select
+go run ./examples/mouse/       # Mouse event handling
+go run ./examples/scroll/      # Scrollable container
+go run ./examples/fullscreen/  # Fullscreen mode
+go run ./examples/nested/      # Component composition
 ```
 
 ## License

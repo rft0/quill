@@ -24,13 +24,13 @@ func (s *TextareaState) Blur() { s.Focused = false }
 func (s *TextareaState) Lines() []string { return strings.Split(s.Value, "\n") }
 
 // Update processes a keyboard event for the textarea.
-func (s *TextareaState) Update(msg Msg) Cmd {
+func (s *TextareaState) Update(msg Msg) {
 	if !s.Focused {
-		return nil
+		return
 	}
 	key, ok := msg.(KeyMsg)
 	if !ok {
-		return nil
+		return
 	}
 
 	lines := s.Lines()
@@ -50,7 +50,7 @@ func (s *TextareaState) Update(msg Msg) Cmd {
 	case KeyEnter:
 		if key.Alt && s.OnSubmit != nil {
 			s.OnSubmit(s.Value)
-			return nil
+			return
 		}
 		before := string(lineRunes[:s.CursorCol])
 		after := string(lineRunes[s.CursorCol:])
@@ -134,7 +134,6 @@ func (s *TextareaState) Update(msg Msg) Cmd {
 
 	s.Value = strings.Join(lines, "\n")
 	s.ensureScroll()
-	return nil
 }
 
 func (s *TextareaState) clampCursor(lines []string) {

@@ -3,6 +3,7 @@ package quill
 import (
 	"math"
 	"strings"
+	"time"
 )
 
 // --- Select ---
@@ -21,13 +22,13 @@ func (s *SelectState) Focus() { s.Focused = true }
 func (s *SelectState) Blur() { s.Focused = false }
 
 // Update processes keyboard events for the select.
-func (s *SelectState) Update(msg Msg) Cmd {
+func (s *SelectState) Update(msg Msg) {
 	if !s.Focused {
-		return nil
+		return
 	}
 	key, ok := msg.(KeyMsg)
 	if !ok {
-		return nil
+		return
 	}
 	switch key.Type {
 	case KeyUp:
@@ -50,7 +51,6 @@ func (s *SelectState) Update(msg Msg) Cmd {
 			}
 		}
 	}
-	return nil
 }
 
 // Select creates a list picker element.
@@ -101,18 +101,17 @@ func (s *CheckboxState) Blur() { s.Focused = false }
 func (s *CheckboxState) Toggle() { s.Checked = !s.Checked }
 
 // Update processes keyboard events for the checkbox.
-func (s *CheckboxState) Update(msg Msg) Cmd {
+func (s *CheckboxState) Update(msg Msg) {
 	if !s.Focused {
-		return nil
+		return
 	}
 	key, ok := msg.(KeyMsg)
 	if !ok {
-		return nil
+		return
 	}
 	if key.Type == KeySpace || key.Type == KeyEnter {
 		s.Toggle()
 	}
-	return nil
 }
 
 // Checkbox creates a checkbox element with a label.
@@ -152,9 +151,7 @@ func ProgressBar(value float64, args ...any) *Node {
 		},
 	}
 
-	// Build the bar text at render time via a custom text.
-	// We store the value and generate the bar in a custom way.
-	n.Text = "__progress__"
+	n.isProgress = true
 	n.progressValue = value
 
 	for _, arg := range args {
@@ -175,18 +172,19 @@ var (
 	SpinnerBlock = []string{"▖", "▘", "▝", "▗"}
 )
 
-// Spinner creates a spinner element from a frame index and frame set.
+// Spinner creates a self-animating spinner element. It manages its own
+// timing internally — just pass a frame set and optional styling props.
 //
-//	frame := quill.UseState(ctx, 0)
-//	quill.UseInterval(ctx, 80*time.Millisecond, func() {
-//	    frame.Set((frame.Get() + 1) % len(quill.SpinnerDots))
-//	})
-//	quill.Spinner(frame.Get(), quill.SpinnerDots, quill.TextColor(quill.Cyan))
-func Spinner(frame int, frames []string, args ...any) *Node {
+//	quill.Spinner(ctx, quill.SpinnerDots, quill.TextColor(quill.Cyan))
+func Spinner(ctx *Context, frames []string, args ...any) *Node {
 	if len(frames) == 0 {
 		return Text(" ", args...)
 	}
-	return Text(frames[frame%len(frames)], args...)
+	frame := UseState(ctx, 0)
+	UseInterval(ctx, 80*time.Millisecond, func() {
+		frame.Set((frame.Get() + 1) % len(frames))
+	})
+	return Text(frames[frame.Get()%len(frames)], args...)
 }
 
 // --- ScrollView ---
@@ -275,13 +273,13 @@ func (s *ListState) ensureVisible() {
 }
 
 // Update processes keyboard events for the list.
-func (s *ListState) Update(msg Msg) Cmd {
+func (s *ListState) Update(msg Msg) {
 	if !s.Focused {
-		return nil
+		return
 	}
 	key, ok := msg.(KeyMsg)
 	if !ok {
-		return nil
+		return
 	}
 	switch key.Type {
 	case KeyUp:
@@ -329,7 +327,6 @@ func (s *ListState) Update(msg Msg) Cmd {
 			}
 		}
 	}
-	return nil
 }
 
 // List creates a virtualized scrollable list that only renders visible items.

@@ -218,6 +218,13 @@ func (p borderColorProp) apply(n *Node) { n.Paint.BorderFG = p.c }
 // BorderColor sets the color of the node's border.
 func BorderColor(c Color) borderColorProp { return borderColorProp{c} }
 
+type titleProp struct{ t string }
+
+func (p titleProp) apply(n *Node) { n.borderTitle = p.t }
+
+// Title sets a text label rendered on the top border of a box.
+func Title(t string) titleProp { return titleProp{t} }
+
 type boldProp struct{}
 
 func (boldProp) apply(n *Node) { n.Paint.Bold = true }
@@ -368,6 +375,7 @@ var (
 //	)
 func Box(args ...any) *Node {
 	n := NewNode(DefaultStyle())
+	n.Style.FlexGrow = 1
 	for _, arg := range args {
 		switch v := arg.(type) {
 		case *Node:

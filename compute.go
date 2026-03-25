@@ -553,6 +553,8 @@ func ComputeInline(node *Node, availWidth float64) float64 {
 	node.Layout.Y = node.Style.Margin.Top
 	if node.Style.Width.Unit != Auto {
 		node.Layout.Width = resolveSize(node.Style.Width, availWidth, availWidth) - node.Style.Margin.Horizontal()
+	} else if node.Style.FlexGrow > 0 {
+		node.Layout.Width = availWidth - node.Style.Margin.Horizontal()
 	} else {
 		// Use natural content width so inline elements don't stretch
 		// to the full terminal width.
