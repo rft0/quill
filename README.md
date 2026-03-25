@@ -551,67 +551,45 @@ got := ll.RenderToString(root, 40)
 
 ## Examples
 
-<table>
-<tr>
-<td>
+### Hello World
 
-**Hello World** <br> `go run ./examples/hello/`
+`go run ./examples/hello/`
 
-<img src="img/hello.png" width="280">
+<img src="img/hello.png" width="600">
 
-</td>
-<td>
+### Counter
 
-**Counter** <br> `go run ./examples/counter/`
+`go run ./examples/counter/`
 
-<img src="img/counter.gif" width="280">
+<img src="img/counter.gif" width="600">
 
-</td>
-</tr>
-<tr>
-<td>
+### Form
 
-**Form** <br> `go run ./examples/form/`
+`go run ./examples/form/`
 
-<img src="img/form.gif" width="280">
+<img src="img/form.gif" width="600">
 
-</td>
-<td>
+### Widgets
 
-**Widgets** <br> `go run ./examples/widgets/`
+`go run ./examples/widgets/`
 
-<img src="img/widgets.png" width="280">
+<img src="img/widgets.png" width="600">
 
-</td>
-</tr>
-<tr>
-<td>
+### Todo
 
-**Mouse** <br> `go run ./examples/mouse/`
+<img src="img/todo.gif" width="600">
 
-<img src="img/mouse.gif" width="280">
+### Mouse
 
-</td>
-<td>
+`go run ./examples/mouse/`
 
-**Scroll** <br> `go run ./examples/scroll/`
+<img src="img/mouse.gif" width="600">
 
-<img src="img/scroll.gif" width="280">
+### Scroll
 
-</td>
-</tr>
-</table>
+`go run ./examples/scroll/`
 
-```bash
-go run ./examples/hello/       # Hello world
-go run ./examples/counter/     # Counter with state and intervals
-go run ./examples/form/        # Form with focus management
-go run ./examples/widgets/     # Spinner, progress, checkbox, select
-go run ./examples/mouse/       # Mouse event handling
-go run ./examples/scroll/      # Scrollable container
-go run ./examples/fullscreen/  # Fullscreen mode
-go run ./examples/nested/      # Component composition
-```
+<img src="img/scroll.gif" width="600">
 
 ## License
 
