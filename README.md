@@ -56,6 +56,7 @@ func main() {
 
 ## Contents
 
+- [Examples](#examples)
 - [Components](#components)
   - [`Box`](#box)
   - [`Text`](#text)
@@ -87,7 +88,48 @@ func main() {
 - [Colors](#colors)
 - [App Configuration](#app-configuration)
 - [Testing](#testing)
-- [Examples](#examples)
+
+## Examples
+
+### Hello World
+
+`go run ./examples/hello/`
+
+<img src="img/hello.png" width="600">
+
+### Counter
+
+`go run ./examples/counter/`
+
+<img src="img/counter.gif" width="600">
+
+### Form
+
+`go run ./examples/form/`
+
+<img src="img/form.gif" width="600">
+
+### Widgets
+
+`go run ./examples/widgets/`
+
+<img src="img/widgets.png" width="600">
+
+### Todo
+
+<img src="img/todo.gif" width="600">
+
+### Mouse
+
+`go run ./examples/mouse/`
+
+<img src="img/mouse.gif" width="600">
+
+### Scroll
+
+`go run ./examples/scroll/`
+
+<img src="img/scroll.gif" width="600">
 
 ## Components
 
@@ -134,7 +176,7 @@ ll.Box(ll.BorderRounded, ll.Title("My Panel"),
     ll.Text("content"),
 )
 // ╭─ My Panel ────────╮
-// │ content            │
+// │ content           │
 // ╰───────────────────╯
 ```
 
@@ -548,49 +590,3 @@ func TestMyComponent(t *testing.T) {
 root := ll.Box(ll.Text("hello"))
 got := ll.RenderToString(root, 40)
 ```
-
-## Examples
-
-### Hello World
-
-`go run ./examples/hello/`
-
-<img src="img/hello.png" width="600">
-
-### Counter
-
-`go run ./examples/counter/`
-
-<img src="img/counter.gif" width="600">
-
-### Form
-
-`go run ./examples/form/`
-
-<img src="img/form.gif" width="600">
-
-### Widgets
-
-`go run ./examples/widgets/`
-
-<img src="img/widgets.png" width="600">
-
-### Todo
-
-<img src="img/todo.gif" width="600">
-
-### Mouse
-
-`go run ./examples/mouse/`
-
-<img src="img/mouse.gif" width="600">
-
-### Scroll
-
-`go run ./examples/scroll/`
-
-<img src="img/scroll.gif" width="600">
-
-## License
-
-MIT
